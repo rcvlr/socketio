@@ -2,6 +2,8 @@ var app = require('express')();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 
+app.set('port', (process.env.PORT || 5000));
+
 app.get('/', function(req, res){
   res.sendFile(__dirname + '/index.html');
 });
@@ -36,6 +38,10 @@ var handleClient = function (socket) {
 
 io.on('connection', handleClient);
 
-http.listen(3000, function(){
+/*http.listen(3000, function(){
   console.log('listening on *:3000');
+});*/
+
+app.listen(app.get('port'), function() {
+  console.log('Node app is running on port', app.get('port'));
 });
