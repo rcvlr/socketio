@@ -1,11 +1,15 @@
-var app = require('express')();
+var express = require('express')
+var app = express()
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 
+// configuration
+app.use(express.static('public'))
 app.set('port', (process.env.PORT || 5000));
 
+// route
 app.get('/', function(req, res){
-  res.sendFile(__dirname + '/index.html');
+  res.sendFile('index.html');
 });
 
 // The main idea behind Socket.IO is that you can send and receive any events you want, 
@@ -16,6 +20,7 @@ var handleClient = function (socket) {
     console.log('a user connected, id: ' + socket.id);
     
     // to make things interesting, send stuff every second
+    /*
     var i = 0;
     var interval = setInterval(function () {
         var tweet = {user: "nodesource", text: "Hello, world! " + i};
@@ -23,10 +28,11 @@ var handleClient = function (socket) {
         console.log("tweet %s", i);
         i = i+1;
     }, 1000);
+    */
     
     socket.on('disconnect', function(){
         console.log('user disconnected');
-        clearInterval(interval);
+        //clearInterval(interval);
     });
   
     socket.on('chat_message', function(msg){
