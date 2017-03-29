@@ -11,7 +11,6 @@ app.get('/', function(req, res){
 // The main idea behind Socket.IO is that you can send and receive any events you want, 
 // with any data you want. Any objects that can be encoded as JSON will do, and binary 
 // data is supported too.
-
 var handleClient = function (socket) {
     // we've got a client connection
     console.log('a user connected, id: ' + socket.id);
@@ -38,10 +37,6 @@ var handleClient = function (socket) {
 
 io.on('connection', handleClient);
 
-/*http.listen(3000, function(){
-  console.log('listening on *:3000');
-});*/
-
-app.listen(app.get('port'), function() {
-  console.log('Node app is running on port', app.get('port'));
+http.listen(app.get('port'), function(){
+  console.log('listening on *:' + app.get('port'));
 });
