@@ -24123,16 +24123,17 @@ var $ = require('jquery')
 var Peer = require('simple-peer')
 var p = new Peer({ initiator: location.hash === '#1', trickle: false })
 
-$('#sendForm').submit(function(){
+$('#sendForm').submit(function(event){
+    event.preventDefault()
     p.send($('#m').val())
+    $('#messages').append($('<li>').text($('#m').val()))
     $('#m').val('')    // clear the text box
-    return false
 })
 
 $("#discButton").click(function disconnect() {
     socket.close()
     p.destroy()
-    console.log("websocket disconnected")
+    console.log("websocket and p2p disconnected")
 })
 
 socket.on('signal_message', function(msg){
@@ -24151,6 +24152,7 @@ p.on('error', function (err) { console.log('error', err) })
 
 p.on('signal', function (data) {
   console.log('SIGNAL', JSON.stringify(data))
+  // pass it to the signaling server
   socket.emit('signal_message', JSON.stringify(data))
 })
 
@@ -24160,7 +24162,6 @@ p.on('connect', function() {
 
 p.on('close', function() {
     console.log('CLOSE')
-    p.destroy()
 })
 
 p.on('data', function(data) {
