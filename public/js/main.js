@@ -1,24 +1,48 @@
 var socket = require('socket.io-client')();
 var $ = require('jquery')
+var Peer = require('simple-peer')
+var p = new Peer({ initiator: location.hash === '#1', trickle: false })
 
 $('#sendForm').submit(function(){
-    socket.emit('chat_message', $('#m').val());
-    $('#m').val('');    // clear the text box
-    return false;
-});
+    p.send($('#m').val())
+    $('#m').val('')    // clear the text box
+    return false
+})
 
 $("#discButton").click(function disconnect() {
-    socket.close();
-    console.log("disconnect");
-});
+    socket.close()
+    p.destroy()
+    console.log("websocket and p2p disconnected")
+})
 
-socket.on('chat_message', function(msg){
-    console.log("message: %s", msg);
-    $('#messages').append($('<li>').text(msg));
-});
+socket.on('signal_message', function(msg){
+    console.log('signal message received from the signaling server')
+    p.signal(JSON.parse(msg))
+})
     
 // The global socket variable is an EventEmitter-like object.
 // We can attach a listener to fire when we've connected to the server like so:
 socket.on("connect", function () {
-    console.log("Connected!");
-});
+    console.log("websocket connected!")
+})
+
+// simple-peer
+p.on('error', function (err) { console.log('error', err) })
+
+p.on('signal', function (data) {
+  console.log('SIGNAL', JSON.stringify(data))
+  socket.emit('signal_message', JSON.stringify(data))
+})
+
+p.on('connect', function() {
+  console.log('CONNECT')
+})
+
+p.on('close', function() {
+    console.log('CLOSE')
+})
+
+p.on('data', function(data) {
+  console.log('data: ' + data)
+  $('#messages').append($('<li>').text(data))
+})
