@@ -14,15 +14,17 @@
     </style>
   </head>
   
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
-  <script src="/js/main.js"></script>
-
   <body>
-    <button onclick="disconnect()">Disconnect</button>
+    <button id="discButton">Disconnect</button>
     <ul id="messages"></ul>
     <form id="sendForm" action="">
       <input id="m" autocomplete="off" /><button>Send</button>
     </form>
+  
+  <!-- <script src="/socket.io/socket.io.js"></script> -->
+  <!-- <script src="https://code.jquery.com/jquery-1.11.1.js"></script> -->
+  <!-- <script src="/js/main.js"></script> -->
+  <script src="/js/bundle.js"></script>
+
   </body>
 </html>

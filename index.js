@@ -12,31 +12,17 @@ app.get('/', function(req, res){
   res.sendFile('index.html');
 });
 
-// The main idea behind Socket.IO is that you can send and receive any events you want, 
-// with any data you want. Any objects that can be encoded as JSON will do, and binary 
-// data is supported too.
-var handleClient = function (socket) {
-    // we've got a client connection
-    console.log('a user connected, id: ' + socket.id);
+var handleClient = function(socket) {
     
-    // to make things interesting, send stuff every second
-    /*
-    var i = 0;
-    var interval = setInterval(function () {
-        var tweet = {user: "nodesource", text: "Hello, world! " + i};
-        socket.emit("tweet", tweet);
-        console.log("tweet %s", i);
-        i = i+1;
-    }, 1000);
-    */
+    console.log('a user connected, id: ' + socket.id);
     
     socket.on('disconnect', function(){
         console.log('user disconnected');
-        //clearInterval(interval);
     });
   
     socket.on('chat_message', function(msg){
-        io.emit('chat_message', msg);
+        // broadcast to all the connected clients except the sender
+        socket.broadcast.emit('chat_message', msg);
         console.log('message: ' + msg);
     });
 };
