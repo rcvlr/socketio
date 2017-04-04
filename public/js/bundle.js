@@ -24185,31 +24185,31 @@ p.on('data', function(data) {
 // ----------------------------------------------------------------------------
 
 function getBatteryService() {
-  log('Requesting Bluetooth Device...');
+  console.log('Requesting Bluetooth Device...');
   navigator.bluetooth.requestDevice(
     {filters: [{services: ['battery_service']}]})
   .then(device => {
-    log('Connecting to GATT Server...');
+    console.log('Connecting to GATT Server...');
     return device.gatt.connect();
   })
   .then(server => {
-    log('Getting Battery Service...');
+    console.log('Getting Battery Service...');
     return server.getPrimaryService('battery_service');
   })
   .then(service => {
-    log('Getting Battery Level Characteristic...');
+    console.log('Getting Battery Level Characteristic...');
     return service.getCharacteristic('battery_level');
   })
   .then(characteristic => {
-    log('Reading Battery Level...');
+    console.log('Reading Battery Level...');
     return characteristic.readValue();
   })
   .then(value => {
     let batteryLevel = value.getUint8(0);
-    log('> Battery Level is ' + batteryLevel + '%');
+    console.log('> Battery Level is ' + batteryLevel + '%');
   })
   .catch(error => {
-    log('Argh! ' + error);
+    console.log('Argh! ' + error);
   });
 }
 
@@ -24217,7 +24217,7 @@ function isWebBluetoothEnabled() {
   if (navigator.bluetooth) {
     return true;
   } else {
-    log('Web Bluetooth API is not available.\n' +
+    console.log('Web Bluetooth API is not available.\n' +
                 'Please make sure the "Experimental Web Platform features" flag is enabled.');
     return false;
   }
