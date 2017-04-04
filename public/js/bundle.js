@@ -24176,7 +24176,7 @@ p.on('data', function(data) {
   if (data == 'getBattery') {
     if (isWebBluetoothEnabled()) {
       getBatteryService();
-    }  
+    }
   }
 });
 
@@ -24217,7 +24217,7 @@ function isWebBluetoothEnabled() {
   if (navigator.bluetooth) {
     return true;
   } else {
-    console.log('Web Bluetooth API is not available.\n' +
+    log('Web Bluetooth API is not available.\n' +
                 'Please make sure the "Experimental Web Platform features" flag is enabled.');
     return false;
   }
