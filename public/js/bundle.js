@@ -24125,6 +24125,7 @@ var socket = require('socket.io-client')();
 var $ = require('jquery');
 var Peer = require('simple-peer');
 var p = new Peer({ initiator: location.hash === '#1', trickle: false });
+var btDevice = 0;
 
 $("#scanButton").hide();
 $("#scanButton").click(getBatteryService);
@@ -24190,18 +24191,65 @@ p.on('data', function(data) {
       $("#scanButton").show("slow");
     }
   }
+  else if (data == 'start notify') {
+    enableBatteryNotification();
+  }
+ 
 });
 
 // ----------------------------------------------------------------------------
 // web bluetooth
 // ----------------------------------------------------------------------------
 
+function enableBatteryNotification() {
+  
+  // create a promise that connect to the previoiusly discovered device
+  var connectDevice = new Promise(function(resolve, reject) {
+    if (btDevice) {
+      server = btDevice.gatt.connect();
+      resolve(server);
+    }
+    else {
+      reject(Error("No device"));
+    }
+  });
+  
+  connectDevice
+  .then(server => {
+    console.log('Getting Service...');
+    return server.getPrimaryService('battery_service');
+  })
+  .then(service => {
+    console.log('Getting Characteristic...');
+    return service.getCharacteristic('battery_level');
+  })
+  .then(characteristic => {
+    myCharacteristic = characteristic;
+    return myCharacteristic.startNotifications().then(_ => {
+      console.log('> Notifications started');
+      myCharacteristic.addEventListener('characteristicvaluechanged',
+          handleNotifications);
+    });
+  })
+  .catch(error => {
+    console.log('Argh! ' + error);
+  });
+}
+
+function handleNotifications(event) {
+  let batteryLevel = event.target.value.getUint8(0);
+  console.log('> Battery level notification: ' + batteryLevel + '%');
+  appendMessage('> Battery level notification: ' + batteryLevel + '%');
+  p.send('> Battery Level notification: ' + batteryLevel + '%');
+}
+
 function getBatteryService() {
   console.log('Requesting Bluetooth Device...');
-  navigator.bluetooth.requestDevice(
-    {filters: [{services: ['battery_service']}]})
+  navigator.bluetooth.requestDevice({filters: [{services: ['battery_service']}]})
   .then(device => {
-    console.log('Connecting to GATT Server...');
+    // store the device for later use
+    btDevice = device;
+    console.log('Connecting to GATT Server on device ' + btDevice.name + '...');
     return device.gatt.connect();
   })
   .then(server => {
@@ -24226,6 +24274,8 @@ function getBatteryService() {
     console.log('Argh! ' + error);
   });
 }
+
+
 
 function isWebBluetoothEnabled() {
   if (navigator.bluetooth) {
