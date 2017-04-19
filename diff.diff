@@ -1,0 +1,144 @@
+diff --git a/public/index.html b/public/index.html
+index 4b7ae9e..a9abdcb 100644
+--- a/public/index.html
++++ b/public/index.html
+@@ -7,7 +7,7 @@
+       body { font: 13px Helvetica, Arial; }
+       form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+       form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+-      form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
++      button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+       #messages { list-style-type: none; margin: 0; padding: 0; }
+       #messages li { padding: 5px 10px; }
+       #messages li:nth-child(odd) { background: #eee; }
+@@ -16,6 +16,9 @@
+   
+   <body>
+     <button id="discButton">Disconnect</button>
++    
++    <button id="scanButton">Scan Bluetooth devices</button>
++   
+     <ul id="messages"></ul>
+     <form id="sendForm" action="">
+       <input id="m" autocomplete="off" /><button>Send</button>
+diff --git a/public/js/bundle.js b/public/js/bundle.js
+index 59b6f7d..8fc935b 100644
+--- a/public/js/bundle.js
++++ b/public/js/bundle.js
+@@ -24123,10 +24123,13 @@ var $ = require('jquery');
+ var Peer = require('simple-peer');
+ var p = new Peer({ initiator: location.hash === '#1', trickle: false });
+ 
++$("#scanButton").hide();
++$("#scanButton").click(getBatteryService);
++
+ $('#sendForm').submit(function(event){
+     event.preventDefault();
+     p.send($('#m').val());
+-    $('#messages').append($('<li>').text($('#m').val()));
++    appendMessage($('#m').val());
+     $('#m').val('');    // clear the text box
+ });
+ 
+@@ -24136,6 +24139,10 @@ $("#discButton").click(function disconnect() {
+     console.log("websocket and p2p disconnected");
+ });
+ 
++function appendMessage(msg) {
++  $('#messages').append($('<li>').text(msg));
++}
++
+ // ----------------------------------------------------------------------------
+ // socketio event
+ // ----------------------------------------------------------------------------
+@@ -24171,11 +24178,11 @@ p.on('close', function() {
+ 
+ p.on('data', function(data) {
+   console.log('data: ' + data);
+-  $('#messages').append($('<li>').text(data));
++  appendMessage(data);
+   
+   if (data == 'getBattery') {
+     if (isWebBluetoothEnabled()) {
+-      getBatteryService();
++      $("#scanButton").show("slow");
+     }
+   }
+ });
+@@ -24207,6 +24214,8 @@ function getBatteryService() {
+   .then(value => {
+     let batteryLevel = value.getUint8(0);
+     console.log('> Battery Level is ' + batteryLevel + '%');
++    appendMessage('> Battery Level is ' + batteryLevel + '%');
++    p.send('> Battery Level is ' + batteryLevel + '%');
+   })
+   .catch(error => {
+     console.log('Argh! ' + error);
+@@ -24222,4 +24231,5 @@ function isWebBluetoothEnabled() {
+     return false;
+   }
+ }
++
+ },{"jquery":41,"simple-peer":57,"socket.io-client":58}]},{},[77]);
+diff --git a/public/js/main.js b/public/js/main.js
+index 0e6f506..edafeb3 100644
+--- a/public/js/main.js
++++ b/public/js/main.js
+@@ -3,10 +3,13 @@ var $ = require('jquery');
+ var Peer = require('simple-peer');
+ var p = new Peer({ initiator: location.hash === '#1', trickle: false });
+ 
++$("#scanButton").hide();
++$("#scanButton").click(getBatteryService);
++
+ $('#sendForm').submit(function(event){
+     event.preventDefault();
+     p.send($('#m').val());
+-    $('#messages').append($('<li>').text($('#m').val()));
++    appendMessage($('#m').val());
+     $('#m').val('');    // clear the text box
+ });
+ 
+@@ -16,6 +19,10 @@ $("#discButton").click(function disconnect() {
+     console.log("websocket and p2p disconnected");
+ });
+ 
++function appendMessage(msg) {
++  $('#messages').append($('<li>').text(msg));
++}
++
+ // ----------------------------------------------------------------------------
+ // socketio event
+ // ----------------------------------------------------------------------------
+@@ -51,11 +58,13 @@ p.on('close', function() {
+ 
+ p.on('data', function(data) {
+   console.log('data: ' + data);
+-  $('#messages').append($('<li>').text(data));
++  appendMessage(data);
+   
+   if (data == 'getBattery') {
+     if (isWebBluetoothEnabled()) {
+-      getBatteryService();
++      // As a security feature, discovering Bluetooth devices with 
++      // navigator.bluetooth.requestDevice must be triggered by a user gesture
++      $("#scanButton").show("slow");
+     }
+   }
+ });
+@@ -87,6 +96,8 @@ function getBatteryService() {
+   .then(value => {
+     let batteryLevel = value.getUint8(0);
+     console.log('> Battery Level is ' + batteryLevel + '%');
++    appendMessage('> Battery Level is ' + batteryLevel + '%');
++    p.send('> Battery Level is ' + batteryLevel + '%');
+   })
+   .catch(error => {
+     console.log('Argh! ' + error);
+@@ -101,4 +112,4 @@ function isWebBluetoothEnabled() {
+                 'Please make sure the "Experimental Web Platform features" flag is enabled.');
+     return false;
+   }
+-}
+\ No newline at end of file
++}
