@@ -1,14 +1,15 @@
 // To run it on a VM use the following command:
 // chromium 10.0.2.2:5000 --enable-experimental-web-platform-features --user-data-dir=/tmp/foo --unsafely-treat-insecure-origin-as-secure=http://10.0.2.2:5000/
 
+// TODO: avoid connecting all the times.
+
 var socket = require('socket.io-client')();
 var $ = require('jquery');
 var Peer = require('simple-peer');
 var p = new Peer({ initiator: location.hash === '#1', trickle: false });
-var btDevice = 0;
 
 $("#scanButton").hide();
-$("#scanButton").click(getBatteryService);
+$("#scanButton").click(getDevice());
 
 $('#sendForm').submit(function(event){
     event.preventDefault();
@@ -64,29 +65,62 @@ p.on('data', function(data) {
   console.log('data: ' + data);
   appendMessage(data);
   
-  if (data == 'getBattery') {
-    if (isWebBluetoothEnabled()) {
-      // As a security feature, discovering Bluetooth devices with 
-      // navigator.bluetooth.requestDevice must be triggered by a user gesture
-      $("#scanButton").show("slow");
-    }
+  switch (data) {
+    case 'get device':
+      if (isWebBluetoothEnabled()) {
+        // As a security feature, discovering Bluetooth devices with 
+        // navigator.bluetooth.requestDevice must be triggered by a user gesture
+        $("#scanButton").show("slow");
+      }
+      break;
+    
+    case 'get battery':
+      getBatteryValue();
+      break;
+       
+    case 'start notify':
+      enableBatteryNotification();
+      break;
+      
+    case 'stop notify':
+      stopBatteryNotification();
+      break;
+      
+    default:
+      console.log('Unknown command received');
+      p.send('Error: unknown command.');
   }
-  else if (data == 'start notify') {
-    enableBatteryNotification();
-  }
-  else if (data == 'stop notify') {
-    disableBatteryNotification();
-  }
- 
+   
 });
 
 // ----------------------------------------------------------------------------
 // web bluetooth
 // ----------------------------------------------------------------------------
+var btDevice = null;
 
+/**
+ * Scan for devices exposing the Battery service.
+ */
+function getDevice()
+{
+  console.log('Requesting Bluetooth Device...');
+  navigator.bluetooth.requestDevice({filters: [{services: ['battery_service',]}]})
+  .then(device => {
+    // set the default device
+    btDevice = device;
+    console.log('Device found is called ' + btDevice.name);
+  })
+  .catch(error => {
+    console.log('Argh! ' + error);
+  });
+}
+
+/**
+ * Enable battery notifications on the default device
+ * that was previously discovered.
+ */
 function enableBatteryNotification() {
-  
-  // create a promise that connect to the previoiusly discovered device
+  // create a promise that connect to the previously discovered device
   var connectDevice = new Promise(function(resolve, reject) {
     if (btDevice) {
       server = btDevice.gatt.connect();
@@ -119,6 +153,9 @@ function enableBatteryNotification() {
   });
 }
 
+/**
+ * Handler for the battery notification events
+ */
 function handleNotifications(event) {
   let batteryLevel = event.target.value.getUint8(0);
   console.log('> Battery level notification: ' + batteryLevel + '%');
@@ -126,19 +163,29 @@ function handleNotifications(event) {
   p.send('> Battery Level notification: ' + batteryLevel + '%');
 }
 
+/**
+ * Disable battery notifications.
+ */
 function disableBatteryNotification() {
     // TODO
 }
 
-function getBatteryService() {
-  console.log('Requesting Bluetooth Device...');
-  navigator.bluetooth.requestDevice({filters: [{services: ['battery_service']}]})
-  .then(device => {
-    // store the device for later use
-    btDevice = device;
-    console.log('Connecting to GATT Server on device ' + btDevice.name + '...');
-    return device.gatt.connect();
-  })
+/**
+ * Read the battery value.
+ */
+function getBatteryValue() {
+  // create a promise that connect to the previously discovered device
+  var connectDevice = new Promise(function(resolve, reject) {
+    if (btDevice) {
+      server = btDevice.gatt.connect();
+      resolve(server);
+    }
+    else {
+      reject(Error("No device"));
+    }
+  });
+  
+  connectDevice
   .then(server => {
     console.log('Getting Battery Service...');
     return server.getPrimaryService('battery_service');
@@ -162,8 +209,9 @@ function getBatteryService() {
   });
 }
 
-
-
+/**
+ * Check if WebBluetooth is supported/enabled by the browser.
+ */
 function isWebBluetoothEnabled() {
   if (navigator.bluetooth) {
     return true;
