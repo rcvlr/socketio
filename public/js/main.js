@@ -9,7 +9,7 @@ var Peer = require('simple-peer');
 var p = new Peer({ initiator: location.hash === '#1', trickle: false });
 
 $("#scanButton").hide();
-$("#scanButton").click(getDevice());
+$("#scanButton").click(getDevice);
 
 $('#sendForm').submit(function(event){
     event.preventDefault();
@@ -65,7 +65,7 @@ p.on('data', function(data) {
   console.log('data: ' + data);
   appendMessage(data);
   
-  switch (data) {
+  switch (String(data)) {
     case 'get device':
       if (isWebBluetoothEnabled()) {
         // As a security feature, discovering Bluetooth devices with 
@@ -87,8 +87,7 @@ p.on('data', function(data) {
       break;
       
     default:
-      console.log('Unknown command received');
-      p.send('Error: unknown command.');
+        break;
   }
    
 });
@@ -97,6 +96,19 @@ p.on('data', function(data) {
 // web bluetooth
 // ----------------------------------------------------------------------------
 var btDevice = null;
+
+/**
+ * Check if WebBluetooth is supported/enabled by the browser.
+ */
+function isWebBluetoothEnabled() {
+  if (navigator.bluetooth) {
+    return true;
+  } else {
+    console.log('Web Bluetooth API is not available.\n' +
+                'Please make sure the "Experimental Web Platform features" flag is enabled.');
+    return false;
+  }
+}
 
 /**
  * Scan for devices exposing the Battery service.
@@ -109,6 +121,7 @@ function getDevice()
     // set the default device
     btDevice = device;
     console.log('Device found is called ' + btDevice.name);
+    p.send('Device found is called ' + btDevice.name);
   })
   .catch(error => {
     console.log('Argh! ' + error);
@@ -207,17 +220,4 @@ function getBatteryValue() {
   .catch(error => {
     console.log('Argh! ' + error);
   });
-}
-
-/**
- * Check if WebBluetooth is supported/enabled by the browser.
- */
-function isWebBluetoothEnabled() {
-  if (navigator.bluetooth) {
-    return true;
-  } else {
-    console.log('Web Bluetooth API is not available.\n' +
-                'Please make sure the "Experimental Web Platform features" flag is enabled.');
-    return false;
-  }
 }
