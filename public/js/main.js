@@ -26,6 +26,7 @@ $("#discButton").click(function disconnect() {
 
 function appendMessage(msg) {
   $('#messages').append($('<li>').text(msg));
+  window.scrollTo(0, document.body.scrollHeight);
 }
 
 // ----------------------------------------------------------------------------
@@ -83,7 +84,7 @@ p.on('data', function(data) {
       break;
       
     case 'stop notify':
-      stopBatteryNotification();
+      disableBatteryNotification();
       break;
       
     default:
@@ -96,6 +97,7 @@ p.on('data', function(data) {
 // web bluetooth
 // ----------------------------------------------------------------------------
 var btDevice = null;
+var battCharacteristic;
 
 /**
  * Check if WebBluetooth is supported/enabled by the browser.
@@ -154,10 +156,10 @@ function enableBatteryNotification() {
     return service.getCharacteristic('battery_level');
   })
   .then(characteristic => {
-    myCharacteristic = characteristic;
-    return myCharacteristic.startNotifications().then(_ => {
+    battCharacteristic = characteristic;
+    return battCharacteristic.startNotifications().then(_ => {
       console.log('> Notifications started');
-      myCharacteristic.addEventListener('characteristicvaluechanged',
+      battCharacteristic.addEventListener('characteristicvaluechanged',
           handleNotifications);
     });
   })
@@ -180,7 +182,17 @@ function handleNotifications(event) {
  * Disable battery notifications.
  */
 function disableBatteryNotification() {
-    // TODO
+  if (battCharacteristic) {
+    battCharacteristic.stopNotifications()
+    .then(_ => {
+      console.log('> Notifications stopped');
+      battCharacteristic.removeEventListener('characteristicvaluechanged',
+          handleNotifications);
+    })
+    .catch(error => {
+      console.log('Argh! ' + error);
+    });
+  }
 }
 
 /**
