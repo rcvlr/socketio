@@ -1,235 +1,270 @@
 // To run it on a VM use the following command:
 // chromium 10.0.2.2:5000 --enable-experimental-web-platform-features --user-data-dir=/tmp/foo --unsafely-treat-insecure-origin-as-secure=http://10.0.2.2:5000/
 
-// TODO: avoid connecting all the times.
+// TODO: avoid connecting (bt wise) all the times.
+//       implement everything like a class.
 
 var socket = require('socket.io-client')();
 var $ = require('jquery');
 var Peer = require('simple-peer');
-var p = new Peer({ initiator: location.hash === '#1', trickle: true });
 
-$("#scanButton").hide();
-$("#scanButton").click(getDevice);
+var constraints = window.constraints = {
+    audio: true,
+    video: true
+};
 
-$('#sendForm').submit(function(event){
-    event.preventDefault();
-    p.send($('#m').val());
-    appendMessage($('#m').val());
-    $('#m').val('');    // clear the text box
-});
+navigator.mediaDevices.getUserMedia(constraints).
+    then(gotMedia).catch(errorCallback);
 
-$("#discButton").click(function disconnect() {
-    socket.close();
-    p.destroy();
-    console.log("websocket and p2p disconnected");
-});
-
-function appendMessage(msg) {
-  $('#messages').append($('<li>').text(msg));
-  window.scrollTo(0, document.body.scrollHeight);
+function errorCallback(error){
+    console.log("getUserMedia error: ", error);
 }
 
-// ----------------------------------------------------------------------------
-// socketio event
-// ----------------------------------------------------------------------------
-socket.on('signal_message', function(msg){
-    console.log('signal message received from the signaling server');
-    p.signal(JSON.parse(msg));
-});
+function gotMedia (stream) {
     
-// The global socket variable is an EventEmitter-like object.
-// We can attach a listener to fire when we've connected to the server like so:
-socket.on("connect", function () {
-    console.log("websocket connected!");
-});
+    var p = new Peer({ initiator: location.hash === '#1', trickle: true, stream: stream });
 
-// ----------------------------------------------------------------------------
-// simple-peer event
-// ----------------------------------------------------------------------------
-p.on('error', function (err) { console.log('error', err) });
+    $("#scanButton").hide();
+    $("#scanButton").click(getDevice);
 
-p.on('signal', function (data) {
-  console.log('SIGNAL', JSON.stringify(data));
-  // pass it to the signaling server
-  socket.emit('signal_message', JSON.stringify(data));
-});
+    $('#sendForm').submit(function(event){
+	event.preventDefault();
+	p.send($('#m').val());
+	appendMessage($('#m').val());
+	$('#m').val('');    // clear the text box
+    });
 
-p.on('connect', function() {
-  console.log('CONNECT');
-});
+    $("#discButton").click(function disconnect() {
+	socket.close();
+	p.destroy();
+	console.log("websocket and p2p disconnected");
+    });
 
-p.on('close', function() {
-  console.log('CLOSE');
-});
+    function appendMessage(msg) {
+	$('#messages').append($('<li>').text(msg));
+	window.scrollTo(0, document.body.scrollHeight);
+    }
 
-p.on('data', function(data) {
-  console.log('data: ' + data);
-  appendMessage(data);
-  
-  switch (String(data)) {
-    case 'get device':
-      if (isWebBluetoothEnabled()) {
-        // As a security feature, discovering Bluetooth devices with 
-        // navigator.bluetooth.requestDevice must be triggered by a user gesture
-        $("#scanButton").show("slow");
-      }
-      break;
+    // ----------------------------------------------------------------------------
+    // socketio event
+    // ----------------------------------------------------------------------------
+    socket.on('signal_message', function(msg){
+	console.log('signal message received from the signaling server');
+	p.signal(JSON.parse(msg));
+    });
     
-    case 'get battery':
-      getBatteryValue();
-      break;
-       
-    case 'start notify':
-      enableBatteryNotification();
-      break;
-      
-    case 'stop notify':
-      disableBatteryNotification();
-      break;
-      
-    default:
-        break;
-  }
-   
-});
-
-// ----------------------------------------------------------------------------
-// web bluetooth
-// ----------------------------------------------------------------------------
-var btDevice = null;
-var battCharacteristic;
-
-/**
- * Check if WebBluetooth is supported/enabled by the browser.
- */
-function isWebBluetoothEnabled() {
-  if (navigator.bluetooth) {
-    return true;
-  } else {
-    console.log('Web Bluetooth API is not available.\n' +
-                'Please make sure the "Experimental Web Platform features" flag is enabled.');
-    return false;
-  }
-}
-
-/**
- * Scan for devices exposing the Battery service.
- */
-function getDevice()
-{
-  console.log('Requesting Bluetooth Device...');
-  navigator.bluetooth.requestDevice({filters: [{services: ['battery_service',]}]})
-  .then(device => {
-    // set the default device
-    btDevice = device;
-    console.log('Device found is called ' + btDevice.name);
-    p.send('Device found is called ' + btDevice.name);
-  })
-  .catch(error => {
-    console.log('Argh! ' + error);
-  });
-}
-
-/**
- * Enable battery notifications on the default device
- * that was previously discovered.
- */
-function enableBatteryNotification() {
-  // create a promise that connect to the previously discovered device
-  var connectDevice = new Promise(function(resolve, reject) {
-    if (btDevice) {
-      server = btDevice.gatt.connect();
-      resolve(server);
-    }
-    else {
-      reject(Error("No device"));
-    }
-  });
-  
-  connectDevice
-  .then(server => {
-    console.log('Getting Service...');
-    return server.getPrimaryService('battery_service');
-  })
-  .then(service => {
-    console.log('Getting Characteristic...');
-    return service.getCharacteristic('battery_level');
-  })
-  .then(characteristic => {
-    battCharacteristic = characteristic;
-    return battCharacteristic.startNotifications().then(_ => {
-      console.log('> Notifications started');
-      battCharacteristic.addEventListener('characteristicvaluechanged',
-          handleNotifications);
+    // The global socket variable is an EventEmitter-like object.
+    // We can attach a listener to fire when we've connected to the server like so:
+    socket.on("connect", function () {
+	console.log("websocket connected!");
     });
-  })
-  .catch(error => {
-    console.log('Argh! ' + error);
-  });
-}
 
-/**
- * Handler for the battery notification events
- */
-function handleNotifications(event) {
-  let batteryLevel = event.target.value.getUint8(0);
-  console.log('> Battery level notification: ' + batteryLevel + '%');
-  appendMessage('> Battery level notification: ' + batteryLevel + '%');
-  p.send('> Battery Level notification: ' + batteryLevel + '%');
-}
+    // ----------------------------------------------------------------------------
+    // simple-peer event
+    // ----------------------------------------------------------------------------
+    p.on('error', function (err) { console.log('error', err) });
 
-/**
- * Disable battery notifications.
- */
-function disableBatteryNotification() {
-  if (battCharacteristic) {
-    battCharacteristic.stopNotifications()
-    .then(_ => {
-      console.log('> Notifications stopped');
-      battCharacteristic.removeEventListener('characteristicvaluechanged',
-          handleNotifications);
-    })
-    .catch(error => {
-      console.log('Argh! ' + error);
+    p.on('signal', function (data) {
+	console.log('SIGNAL', JSON.stringify(data));
+	// pass it to the signaling server
+	socket.emit('signal_message', JSON.stringify(data));
     });
-  }
-}
 
-/**
- * Read the battery value.
- */
-function getBatteryValue() {
-  // create a promise that connect to the previously discovered device
-  var connectDevice = new Promise(function(resolve, reject) {
-    if (btDevice) {
-      server = btDevice.gatt.connect();
-      resolve(server);
+    p.on('connect', function() {
+	console.log('CONNECT');
+    });
+
+    p.on('close', function() {
+	console.log('CLOSE');
+    });
+
+    p.on('data', function(data) {
+	console.log('data: ' + data);
+	appendMessage(data);
+	
+	switch (String(data)) {
+	case 'get device':
+	    if (isWebBluetoothEnabled()) {
+		// As a security feature, discovering Bluetooth devices with 
+		// navigator.bluetooth.requestDevice must be triggered by a user gesture
+		$("#scanButton").show("slow");
+	    }
+	    break;
+	    
+	case 'get battery':
+	    getBatteryValue();
+	    break;
+	    
+	case 'start notify':
+	    enableBatteryNotification();
+	    break;
+	    
+	case 'stop notify':
+	    disableBatteryNotification();
+	    break;
+	    
+	default:
+            break;
+	}
+	
+    });
+
+    p.on('stream', function (stream) {
+	// got remote video stream, now let's show it in a video tag
+	console.log("we got remote video/audio");
+
+	var video = document.querySelector('video');
+	var videoTracks = stream.getVideoTracks();
+	console.log('Got stream with constraints:', constraints);
+	console.log('Using video device: ' + videoTracks[0].label);
+
+	stream.oninactive = function() {
+	    console.log('Stream inactive');
+	};
+	
+	window.stream = stream; // make variable available to browser console
+	video.srcObject = stream;
+    });
+
+    // ----------------------------------------------------------------------------
+    // web bluetooth
+    // ----------------------------------------------------------------------------
+    var btDevice = null;
+    var battCharacteristic;
+
+    /**
+     * Check if WebBluetooth is supported/enabled by the browser.
+     */
+    function isWebBluetoothEnabled() {
+	if (navigator.bluetooth) {
+	    return true;
+	} else {
+	    console.log('Web Bluetooth API is not available.\n' +
+			'Please make sure the "Experimental Web Platform features" flag is enabled.');
+	    return false;
+	}
     }
-    else {
-      reject(Error("No device"));
+
+    /**
+     * Scan for devices exposing the Battery service.
+     */
+    function getDevice()
+    {
+	console.log('Requesting Bluetooth Device...');
+	navigator.bluetooth.requestDevice({filters: [{services: ['battery_service',]}]})
+	    .then(device => {
+		// set the default device
+		btDevice = device;
+		console.log('Device found is called ' + btDevice.name);
+		p.send('Device found is called ' + btDevice.name);
+	    })
+	    .catch(error => {
+		console.log('Argh! ' + error);
+	    });
     }
-  });
-  
-  connectDevice
-  .then(server => {
-    console.log('Getting Battery Service...');
-    return server.getPrimaryService('battery_service');
-  })
-  .then(service => {
-    console.log('Getting Battery Level Characteristic...');
-    return service.getCharacteristic('battery_level');
-  })
-  .then(characteristic => {
-    console.log('Reading Battery Level...');
-    return characteristic.readValue();
-  })
-  .then(value => {
-    let batteryLevel = value.getUint8(0);
-    console.log('> Battery Level is ' + batteryLevel + '%');
-    appendMessage('> Battery Level is ' + batteryLevel + '%');
-    p.send('> Battery Level is ' + batteryLevel + '%');
-  })
-  .catch(error => {
-    console.log('Argh! ' + error);
-  });
+
+    /**
+     * Enable battery notifications on the default device
+     * that was previously discovered.
+     */
+    function enableBatteryNotification() {
+	// create a promise that connect to the previously discovered device
+	var connectDevice = new Promise(function(resolve, reject) {
+	    if (btDevice) {
+		server = btDevice.gatt.connect();
+		resolve(server);
+	    }
+	    else {
+		reject(Error("No device"));
+	    }
+	});
+	
+	connectDevice
+	    .then(server => {
+		console.log('Getting Service...');
+		return server.getPrimaryService('battery_service');
+	    })
+	    .then(service => {
+		console.log('Getting Characteristic...');
+		return service.getCharacteristic('battery_level');
+	    })
+	    .then(characteristic => {
+		battCharacteristic = characteristic;
+		return battCharacteristic.startNotifications().then(_ => {
+		    console.log('> Notifications started');
+		    battCharacteristic.addEventListener('characteristicvaluechanged',
+							handleNotifications);
+		});
+	    })
+	    .catch(error => {
+		console.log('Argh! ' + error);
+	    });
+    }
+
+    /**
+     * Handler for the battery notification events
+     */
+    function handleNotifications(event) {
+	let batteryLevel = event.target.value.getUint8(0);
+	console.log('> Battery level notification: ' + batteryLevel + '%');
+	appendMessage('> Battery level notification: ' + batteryLevel + '%');
+	p.send('> Battery Level notification: ' + batteryLevel + '%');
+    }
+
+    /**
+     * Disable battery notifications.
+     */
+    function disableBatteryNotification() {
+	if (battCharacteristic) {
+	    battCharacteristic.stopNotifications()
+		.then(_ => {
+		    console.log('> Notifications stopped');
+		    battCharacteristic.removeEventListener('characteristicvaluechanged',
+							   handleNotifications);
+		})
+		.catch(error => {
+		    console.log('Argh! ' + error);
+		});
+	}
+    }
+
+    /**
+     * Read the battery value.
+     */
+    function getBatteryValue() {
+	// create a promise that connect to the previously discovered device
+	var connectDevice = new Promise(function(resolve, reject) {
+	    if (btDevice) {
+		server = btDevice.gatt.connect();
+		resolve(server);
+	    }
+	    else {
+		reject(Error("No device"));
+	    }
+	});
+	
+	connectDevice
+	    .then(server => {
+		console.log('Getting Battery Service...');
+		return server.getPrimaryService('battery_service');
+	    })
+	    .then(service => {
+		console.log('Getting Battery Level Characteristic...');
+		return service.getCharacteristic('battery_level');
+	    })
+	    .then(characteristic => {
+		console.log('Reading Battery Level...');
+		return characteristic.readValue();
+	    })
+	    .then(value => {
+		let batteryLevel = value.getUint8(0);
+		console.log('> Battery Level is ' + batteryLevel + '%');
+		appendMessage('> Battery Level is ' + batteryLevel + '%');
+		p.send('> Battery Level is ' + batteryLevel + '%');
+	    })
+	    .catch(error => {
+		console.log('Argh! ' + error);
+	    });
+
+    }
 }

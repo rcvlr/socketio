@@ -1,0 +1,30 @@
+-- heroku --
+https://devcenter.heroku.com/articles/getting-started-with-nodejs
+
+git remote add heroku https://git.heroku.com/polar-eyrie-36809.git
+git push heroku master
+
+The application is now deployed. Ensure that at least one instance of the app is running:
+heroku ps:scale web=1
+
+-- nodejs --
+# having problem with browserify and jquery? 
+npm link jquery
+
+# to create the bundle.js
+browserify main.js -o bundle.hs
+
+npm install # do this only once after cloning the repo
+node index.js
+
+-- browser --
+
+# how to start chrome from the vm when you have node running locally
+chromium 10.0.2.2:5000 --enable-experimental-web-platform-features --user-data-dir=/tmp/foo --unsafely-treat-insecure-origin-as-secure=http://10.0.2.2:5000/
+
+
+
+
+
+
+
