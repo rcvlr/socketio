@@ -371,8 +371,8 @@ function fromObject (obj) {
   }
 
   if (obj) {
-    if (ArrayBuffer.isView(obj) || 'length' in obj) {
-      if (typeof obj.length !== 'number' || isnan(obj.length)) {
+    if (isArrayBufferView(obj) || 'length' in obj) {
+      if (typeof obj.length !== 'number' || numberIsNaN(obj.length)) {
         return createBuffer(0)
       }
       return fromArrayLike(obj)
@@ -483,7 +483,7 @@ function byteLength (string, encoding) {
   if (Buffer.isBuffer(string)) {
     return string.length
   }
-  if (ArrayBuffer.isView(string) || string instanceof ArrayBuffer) {
+  if (isArrayBufferView(string) || string instanceof ArrayBuffer) {
     return string.byteLength
   }
   if (typeof string !== 'string') {
@@ -749,7 +749,7 @@ function bidirectionalIndexOf (buffer, val, byteOffset, encoding, dir) {
     byteOffset = -0x80000000
   }
   byteOffset = +byteOffset  // Coerce to Number.
-  if (isNaN(byteOffset)) {
+  if (numberIsNaN(byteOffset)) {
     // byteOffset: it it's undefined, null, NaN, "foo", etc, search whole buffer
     byteOffset = dir ? 0 : (buffer.length - 1)
   }
@@ -880,7 +880,7 @@ function hexWrite (buf, string, offset, length) {
   }
   for (var i = 0; i < length; ++i) {
     var parsed = parseInt(string.substr(i * 2, 2), 16)
-    if (isNaN(parsed)) return i
+    if (numberIsNaN(parsed)) return i
     buf[offset + i] = parsed
   }
   return i
@@ -1683,7 +1683,7 @@ var INVALID_BASE64_RE = /[^+/0-9A-Za-z-_]/g
 
 function base64clean (str) {
   // Node strips out invalid characters like \n and \t from the string, base64-js does not
-  str = stringtrim(str).replace(INVALID_BASE64_RE, '')
+  str = str.trim().replace(INVALID_BASE64_RE, '')
   // Node converts strings with length < 2 to ''
   if (str.length < 2) return ''
   // Node allows for non-padded base64 strings (missing trailing ===), base64-js does not
@@ -1691,11 +1691,6 @@ function base64clean (str) {
     str = str + '='
   }
   return str
-}
-
-function stringtrim (str) {
-  if (str.trim) return str.trim()
-  return str.replace(/^\s+|\s+$/g, '')
 }
 
 function toHex (n) {
@@ -1820,8 +1815,13 @@ function blitBuffer (src, dst, offset, length) {
   return i
 }
 
-function isnan (val) {
-  return val !== val // eslint-disable-line no-self-compare
+// Node 0.10 supports `ArrayBuffer` but lacks `ArrayBuffer.isView`
+function isArrayBufferView (obj) {
+  return (typeof ArrayBuffer.isView === 'function') && ArrayBuffer.isView(obj)
+}
+
+function numberIsNaN (obj) {
+  return obj !== obj // eslint-disable-line no-self-compare
 }
 
 },{"base64-js":1,"ieee754":5}],4:[function(require,module,exports){
@@ -2408,6 +2408,10 @@ process.off = noop;
 process.removeListener = noop;
 process.removeAllListeners = noop;
 process.emit = noop;
+process.prependListener = noop;
+process.prependOnceListener = noop;
+
+process.listeners = function (name) { return [] }
 
 process.binding = function (name) {
     throw new Error('process.binding is not supported');
@@ -3045,8 +3049,8 @@ function objectToString(o) {
   return Object.prototype.toString.call(o);
 }
 
-}).call(this,{"isBuffer":require("../../../../../AppData/Roaming/npm/node_modules/browserify/node_modules/is-buffer/index.js")})
-},{"../../../../../AppData/Roaming/npm/node_modules/browserify/node_modules/is-buffer/index.js":6}],17:[function(require,module,exports){
+}).call(this,{"isBuffer":require("C:/Users/AU00016R/AppData/Roaming/npm/node_modules/browserify/node_modules/is-buffer/index.js")})
+},{"C:/Users/AU00016R/AppData/Roaming/npm/node_modules/browserify/node_modules/is-buffer/index.js":6}],17:[function(require,module,exports){
 (function (process){
 /**
  * This is the web browser implementation of `debug()`.
@@ -24654,7 +24658,10 @@ module.exports = yeast;
 var socket = require('socket.io-client')();
 var $ = require('jquery');
 var Peer = require('simple-peer');
-var p = new Peer({ initiator: location.hash === '#1', trickle: false });
+var p = new Peer({ initiator: location.hash === '#1',
+		   trickle: true,
+		   config: { iceServers: [ { url: 'stun:stun.l.google.com:19302' } ] }
+		 });
 
 $("#scanButton").hide();
 $("#scanButton").click(getDevice);
