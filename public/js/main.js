@@ -6,10 +6,7 @@
 var socket = require('socket.io-client')();
 var $ = require('jquery');
 var Peer = require('simple-peer');
-var p = new Peer({ initiator: location.hash === '#1',
-		   trickle: true,
-		   config: { iceServers: [ { url: 'stun:stun.l.google.com:19302' } ] }
-		 });
+var p = new Peer({ initiator: location.hash === '#1', trickle: true });
 
 $("#scanButton").hide();
 $("#scanButton").click(getDevice);
